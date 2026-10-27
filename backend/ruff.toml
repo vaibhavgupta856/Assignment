@@ -1,12 +1,7 @@
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
-
-[tool.ruff]
 line-length = 100
 target-version = "py312"
 
-[tool.ruff.lint]
+[lint]
 select = ["E", "F", "I", "UP", "B"]
 # B008: FastAPI declares query params with Query() defaults by design.
 ignore = ["B008"]

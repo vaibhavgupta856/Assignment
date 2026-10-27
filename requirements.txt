@@ -1,5 +1,0 @@
-# Runtime dependencies for the Vercel Python function.
-# Keep in sync with backend/requirements.txt (uvicorn is not needed on Vercel).
-fastapi==0.136.3
-httpx==0.28.1
-tzdata==2025.2

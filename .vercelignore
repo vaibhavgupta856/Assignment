@@ -1,4 +1,6 @@
-backend/.venv
-backend/tests
+**/.venv
+**/tests
 **/__pycache__
+**/.pytest_cache
+**/.ruff_cache
 **/node_modules

@@ -85,14 +85,18 @@ cd backend && .venv/bin/python -m scripts.fetch_data
 
 ## Deployment
 
-**Vercel** (the live app): the React build is served as static files, and FastAPI runs as a Python serverless
-function at `api/index.py`. `vercel.json` routes `/api/*` to it.
+**Vercel** (the live app) uses [Vercel Services](https://vercel.com/docs/services): one project, one domain,
+with two independently built services defined in `vercel.json`:
 
-```bash
-npm i -g vercel
-vercel           # first time: link the project
-vercel --prod
-```
+| Service | Root | Public paths |
+|---|---|---|
+| `backend` (FastAPI, `app.main:app`) | `backend/` | `/api/*`, `/docs`, `/openapi.json` |
+| `frontend` (Vite static build) | `frontend/` | everything else |
+
+The browser calls the API on the same origin (`/api/...`), so there are no service-to-service bindings and no CORS
+setup. Vercel passes the original path to the backend, so routes are identical in Docker, local development and
+Vercel. To deploy, import the GitHub repo at vercel.com/new and click Deploy; every push to `main` redeploys
+automatically. To run the same routing locally, use `vercel dev -L`.
 
 **Heroku** (alternative): the Dockerfile reads `$PORT`, so the same image runs unchanged:
 `heroku container:push web && heroku container:release web`.
@@ -180,7 +184,6 @@ flowchart LR
 
 ```
 .
-├── api/index.py                 # Vercel serverless entry → backend FastAPI app
 ├── backend/
 │   ├── app/
 │   │   ├── config.py            # analysis window, decision-time default, paths
@@ -196,7 +199,7 @@ flowchart LR
 │   ├── tests/                   # pytest: selection rules, metrics, API end-to-end
 │   ├── requirements.txt         # runtime dependencies
 │   ├── requirements-dev.txt     # adds pytest and ruff
-│   └── pyproject.toml           # pytest and ruff config
+│   ├── pytest.ini, ruff.toml    # test and lint config
 ├── frontend/
 │   ├── src/
 │   │   ├── api.ts               # typed API client and data hook
@@ -208,8 +211,7 @@ flowchart LR
 │   └── vite.config.ts           # dev proxy and chunking
 ├── Dockerfile                   # multi-stage: build UI → Python runtime serving UI and API
 ├── docker-compose.yml
-├── vercel.json                  # Vercel build and routing
-├── requirements.txt             # Python dependencies for the Vercel function
+├── vercel.json                  # Vercel Services: frontend and backend, plus public routing
 └── .github/workflows/ci.yml     # lint, test, build and Docker build
 ```
 
