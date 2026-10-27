@@ -4,7 +4,7 @@ WindSight is a web app for a UK utility's **day-ahead power procurement team**. 
 the national wind forecast that was available when the purchase decision had to be made. It also measures how
 accurate that forecast turned out to be, so buyers can size their purchases with a known margin of error.
 
-- **Live app:** _<add your Vercel URL here>_
+- **Live app:** https://assignment-navy-five-15.vercel.app  (API docs: https://assignment-navy-five-15.vercel.app/docs)
 - **Video walkthrough:** _<add your unlisted YouTube URL here>_
 - **Scope:** purchase decisions made in January 2026, so delivery days run from 2 Jan to 1 Feb 2026. The data is
   national wind generation from Elexon BMRS (`FUELHH` actuals and `WINDFOR` forecasts).
