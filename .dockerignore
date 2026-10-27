@@ -1,0 +1,10 @@
+**/node_modules
+**/.venv
+**/tests
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+frontend/dist
+.git
+.github
+.vercel
