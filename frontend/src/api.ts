@@ -1,4 +1,10 @@
 // Typed client for the WindSight API. Types mirror backend/app/schemas.py.
+
+export const dayPath = (date: string, decisionTime: string) =>
+  `/api/day?date=${date}&decision_time=${encodeURIComponent(decisionTime)}`
+
+export const accuracyPath = (decisionTime: string) =>
+  `/api/accuracy?decision_time=${encodeURIComponent(decisionTime)}`
 import { useEffect, useState } from 'react'
 
 export interface Meta {
@@ -102,8 +108,8 @@ export interface HorizonRow {
   p90: number | null
 }
 
-async function getJson<T>(path: string, signal: AbortSignal): Promise<T> {
-  const res = await fetch(path, { signal })
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(path)
   if (!res.ok) {
     const body = await res.json().catch(() => null)
     throw new Error(body?.detail ?? `Request failed (${res.status})`)
@@ -111,28 +117,66 @@ async function getJson<T>(path: string, signal: AbortSignal): Promise<T> {
   return res.json() as Promise<T>
 }
 
+// The API serves an immutable snapshot, so every response can be kept for the
+// whole session. In-flight requests are shared, so a prefetch that is still
+// running is reused instead of fetching the same URL twice.
+const cache = new Map<string, unknown>()
+const inflight = new Map<string, Promise<unknown>>()
+
+function load<T>(path: string): Promise<T> {
+  if (cache.has(path)) return Promise.resolve(cache.get(path) as T)
+  let pending = inflight.get(path)
+  if (!pending) {
+    pending = getJson<T>(path)
+      .then((data) => {
+        cache.set(path, data)
+        return data
+      })
+      .finally(() => inflight.delete(path))
+    inflight.set(path, pending)
+  }
+  return pending as Promise<T>
+}
+
+/** Warm the cache in the background (e.g. the next day) so navigating there is instant. */
+export function prefetch(path: string) {
+  load(path).catch(() => undefined)
+}
+
 export interface Loadable<T> {
   data: T | null
   error: string | null
+  /** True while `path` is loading; `data` then still holds the previous result. */
   loading: boolean
 }
 
 /** Fetch `path` whenever it changes; keeps showing the previous data while reloading. */
 export function useApi<T>(path: string | null): Loadable<T> {
-  const [state, setState] = useState<Loadable<T>>({ data: null, error: null, loading: !!path })
+  const [state, setState] = useState<{ path: string | null; data: T | null; error: string | null }>({
+    path: null,
+    data: null,
+    error: null,
+  })
 
   useEffect(() => {
     if (!path) return
-    const ctrl = new AbortController()
-    setState((s) => ({ ...s, loading: true, error: null }))
-    getJson<T>(path, ctrl.signal)
-      .then((data) => setState({ data, error: null, loading: false }))
-      .catch((err: Error) => {
-        if (ctrl.signal.aborted) return
-        setState((s) => ({ ...s, error: err.message, loading: false }))
-      })
-    return () => ctrl.abort()
+    let cancelled = false
+    load<T>(path)
+      .then((data) => !cancelled && setState({ path, data, error: null }))
+      .catch((err: Error) => !cancelled && setState((s) => ({ ...s, path, error: err.message })))
+    return () => {
+      cancelled = true
+    }
   }, [path])
 
-  return state
+  // A cached response is shown in the same render the path changes, with no flash of old data.
+  if (path && state.path !== path && cache.has(path)) {
+    return { data: cache.get(path) as T, error: null, loading: false }
+  }
+  const current = state.path === path
+  return {
+    data: state.data,
+    error: current ? state.error : null,
+    loading: !!path && !current,
+  }
 }

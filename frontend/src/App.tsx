@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useApi, type Meta } from './api'
+import { accuracyPath, dayPath, prefetch, useApi, type Meta } from './api'
 import { Status } from './components/ui'
 import AccuracyView from './views/AccuracyView'
 import DayView from './views/DayView'
@@ -64,6 +64,17 @@ export default function App() {
   const m = meta.data
   const decisionTime = route.decisionTime ?? m?.default_decision_time ?? '09:00'
   const date = route.date ?? m?.last_delivery_date ?? ''
+
+  // Warm the other views in the background so switching tabs is instant.
+  useEffect(() => {
+    if (!m) return
+    const timer = window.setTimeout(() => {
+      if (route.tab !== 'day' && date) prefetch(dayPath(date, decisionTime))
+      prefetch(accuracyPath(decisionTime))
+      prefetch('/api/horizons')
+    }, 400)
+    return () => window.clearTimeout(timer)
+  }, [m, route.tab, date, decisionTime])
 
   return (
     <div className="app">

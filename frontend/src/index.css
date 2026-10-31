@@ -532,3 +532,48 @@ code {
     flex: 1;
   }
 }
+
+/* ---------- Loading a new day / decision time ---------- */
+
+.day-nav-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.updating {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.updating::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 0.9s ease-in-out infinite;
+}
+
+.is-updating {
+  opacity: 0.45;
+  transition: opacity 0.12s;
+  pointer-events: none;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (max-width: 560px) {
+  .day-nav-wrap {
+    width: 100%;
+    align-items: stretch;
+  }
+}

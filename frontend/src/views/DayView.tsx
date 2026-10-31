@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import {
   Area,
   CartesianGrid,
@@ -10,7 +10,7 @@ import {
   YAxis,
   type TooltipProps,
 } from 'recharts'
-import { useApi, type DayView as DayData, type Meta, type SeriesPoint } from '../api'
+import { dayPath, prefetch, useApi, type DayView as DayData, type Meta, type SeriesPoint } from '../api'
 import { Card, Kpi, Legend, Status } from '../components/ui'
 import { COLORS } from '../theme'
 import { addDays, axisGw, clock, dateLong, dateShort, dayTime, gw, gwh, signedPct } from '../format'
@@ -75,9 +75,17 @@ function TooltipRow({ color, label, value }: { color: string; label: string; val
 }
 
 export default function DayView({ meta, date, decisionTime, onDateChange }: Props) {
-  const { data, error, loading } = useApi<DayData>(
-    `/api/day?date=${date}&decision_time=${encodeURIComponent(decisionTime)}`,
-  )
+  const { data, error, loading } = useApi<DayData>(dayPath(date, decisionTime))
+
+  // Once this day is shown, load its neighbours in the background so Prev/Next are instant.
+  const first = meta.first_delivery_date
+  const last = meta.last_delivery_date
+  useEffect(() => {
+    if (loading) return
+    for (const d of [addDays(date, -1), addDays(date, 1)]) {
+      if (d >= first && d <= last) prefetch(dayPath(d, decisionTime))
+    }
+  }, [date, decisionTime, first, last, loading])
 
   const rows: Row[] = useMemo(
     () =>
@@ -89,8 +97,6 @@ export default function DayView({ meta, date, decisionTime, onDateChange }: Prop
     [data],
   )
 
-  const first = meta.first_delivery_date
-  const last = meta.last_delivery_date
   const decisionDay = addDays(date, -1)
 
   const toggle = (
@@ -126,13 +132,17 @@ export default function DayView({ meta, date, decisionTime, onDateChange }: Prop
             day-ahead bids for this day had to be placed — and what actually happened.
           </p>
         </div>
-        {toggle}
+        <div className="day-nav-wrap">
+          {toggle}
+          {loading && data && <span className="updating">Updating…</span>}
+        </div>
       </div>
 
       <Status loading={loading && !data} error={error} />
 
       {data && e && (
-        <>
+        // While another day loads, the previous day's numbers stay visible but dimmed.
+        <div className={`stack ${loading ? 'is-updating' : ''}`} aria-busy={loading}>
           <div className="kpi-grid">
             <Kpi
               label="Wind forecast (Elexon)"
@@ -276,7 +286,7 @@ export default function DayView({ meta, date, decisionTime, onDateChange }: Prop
               </table>
             </Card>
           </div>
-        </>
+        </div>
       )}
     </div>
   )

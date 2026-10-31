@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, time
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -17,6 +17,21 @@ app = FastAPI(
     version="1.0.0",
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# The data is an immutable snapshot, so a response for a given URL never changes
+# within a deployment. Browsers may reuse it for an hour; the CDN keeps it until
+# the next deploy (Vercel purges its edge cache on every deployment).
+API_CACHE_CONTROL = "public, max-age=3600, s-maxage=31536000, stale-while-revalidate=86400"
+
+
+@app.middleware("http")
+async def cache_api_responses(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/api/") and path != "/api/health" and response.status_code == 200:
+        response.headers["Cache-Control"] = API_CACHE_CONTROL
+    return response
+
 
 DecisionTime = Query(
     config.DEFAULT_DECISION_TIME.strftime("%H:%M"),

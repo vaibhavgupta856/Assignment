@@ -17,7 +17,7 @@ import {
   YAxis,
   ZAxis,
 } from 'recharts'
-import { useApi, type Accuracy, type HorizonRow } from '../api'
+import { accuracyPath, useApi, type Accuracy, type HorizonRow } from '../api'
 import { Card, Kpi, Legend, Status } from '../components/ui'
 import { COLORS } from '../theme'
 import { axisGw, change, dateShort, gw, pct, signedGw, signedPct } from '../format'
@@ -30,7 +30,7 @@ interface Props {
 const gwTooltip = (v: number) => gw(v)
 
 export default function AccuracyView({ decisionTime, onOpenDay }: Props) {
-  const acc = useApi<Accuracy>(`/api/accuracy?decision_time=${encodeURIComponent(decisionTime)}`)
+  const acc = useApi<Accuracy>(accuracyPath(decisionTime))
   const hor = useApi<HorizonRow[]>('/api/horizons')
   const a = acc.data
 
@@ -48,7 +48,7 @@ export default function AccuracyView({ decisionTime, onOpenDay }: Props) {
   const p90 = a.buffers.find((b) => b.confidence === 90)
 
   return (
-    <div className="stack">
+    <div className={`stack ${acc.loading ? 'is-updating' : ''}`} aria-busy={acc.loading}>
       <div className="page-head">
         <div>
           <p className="eyebrow">Back-test · January 2026 decisions · {s.count} delivery hours</p>

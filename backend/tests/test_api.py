@@ -62,6 +62,14 @@ def test_accuracy_covers_every_hour_in_window():
     assert [b["confidence"] for b in body["buffers"]] == [50, 80, 90, 95]
 
 
+def test_data_responses_are_cacheable_but_errors_and_health_are_not():
+    ok = client.get("/api/day", params={"date": "2026-01-15"})
+    assert "s-maxage" in ok.headers["cache-control"]
+    missing = client.get("/api/day", params={"date": "2026-03-01"})
+    assert "s-maxage" not in missing.headers.get("cache-control", "")
+    assert "s-maxage" not in client.get("/api/health").headers.get("cache-control", "")
+
+
 def test_horizon_curve_is_reported_on_a_constant_sample():
     rows = client.get("/api/horizons").json()
     assert rows[0]["horizon_hours"] == 0
